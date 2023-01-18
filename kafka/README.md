@@ -109,3 +109,87 @@ Mesaj okunur. Mesaj okur okunmaz bir adet transaction oluşturulur. Transaction 
 Bir topic içerisinde 4 tane partition olsun. Consumer group içinde de sadece 1 adet consumer olsun. O zaman consumer 1 aynı anda tüm partition’ları okuyabilir. Ancak bu çok performanslı olmayabilir. 1 adet daha consumer eklendiğinde kafka consumer’lara 2 şer tane partition okuyacak şekilde bölüştürür. 1 tane daha consumer eklenirse ona da paylaştırılır. Ve nihayetinde 4 tane consumer olduğunda her partition 1 adet okuyucuyu karşılayacak şekilde performanslı bir şeklide çalışır.
 
 Bir topic’i birden fazla consumer group okuyabilir. İsimleri birbirinden farklı olduğu sürece sorun olmaz o da ayrıca okuma işlemini gerçekleştirebilir.
+
+# Local’de Kafka
+
+Öncelikle zookeeper’ı çalıştırmamız gerekiyor. Bir config dosyası göstermemiz gerekiyor.
+
+```bash
+./bin/zookeeper-server-start.sh config/zookeeper.properties
+```
+
+Sonrasında Kafka’yı çalıştırıyoruz. Burda da server.properties’ı config olarak gösteriyoruz.
+
+```bash
+./bin/kafka-server-start.sh config/server.properties
+```
+
+Burda 1 adet broker çalışmakta. İkinci bir server ayağa kaldırmak için server.properties dosyasının bir kopyasını oluşturuyoruz ve ona da server1.properties diyelim. Bu kopyada değişecek alanlar;
+
+broker.id = 1, listener=PLAINTEXT://:9093 (comment out edilecek), log.dirs=/tmp/kafka1-logs
+
+```bash
+./bin/kafka-server-start.sh config/server1.properties
+```
+
+Server’lar ayağa kalktı. **bin** altında ./kafka-topic.sh ile komutların listesini görebiliyoruz.
+
+Bu listede **—bootstrap-server** parametresi verilmesi zorunlu parametrelerden biridir. Hangi kafka broker üzerinden bunu yapmak istediğimizi belirtiyoruz.
+
+```bash
+./kafka-topics.sh --bootstrap-server localhost:9092 --create --topic topic1
+```
+
+bir topic daha oluşturacağız. Bu sefer partitions ve replication bilgilerini kendimiz vereceğiz. replication’a 2 diyoruz çünkü sadece 2 adet kafka broker’ımız var.
+
+```bash
+./kafka-topics.sh --bootstrap-server localhost:9092 --partitions 10 --replication-factor 2 --create --topic topic10
+```
+
+Bir topic hakkında bilgi almak için **describe** parametresini kullanırız.
+
+```bash
+./kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic topic10
+```
+
+oluşturduğumuz topic’i silmek için de **delete** parametresini kullanıyoruz.
+
+```bash
+./kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic topic1
+```
+
+tüm topic’leri listelemek için **list** komutu:
+
+```bash
+./kafka-topics.sh --bootstrap-server localhost:9092 --list
+```
+
+Artık topic hazır, şimdi mesaj gönderip mesaj okuyalım.
+
+```bash
+./kafka-console-consumer.sh --bootstrap-server localhost:9092 --from-beginning --topic topic10
+```
+
+boş dönebilir çünkü içinde mesaj yok. bir mesaj gönderelim.
+
+```bash
+./kafka-console-producer.sh --bootstrap-server localhost:9092 --topic topic10
+```
+
+sonrasında her enter’a basıldığında eklenen mesaj gönderiliyor.
+
+consumer gruplarının listelenmesi için de;
+
+```bash
+./kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+```
+
+consumer group için detaylı bilgi elde etmek için;
+
+```bash
+./kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group console-consumer-25734
+```
+
+burada her partition için ayrı ayrı bilgiler gösterilir.
+
+Detaylarda CURRENT-OFFSET şu an consumer tarafından okunmuş ve commit edilmiş en son offset’i gösterir. LOG-END-OFFSET ise partition içerisindeki en son okunmuş veya okunmamış farketmeksizin en son offset numarasını gösterir. CURRENT-OFFSET - ile gösterilirse demek ki LOG-END-OFFSET ile aynı olduğunu anlıyoruz. Bu tüm mesajların okunduğunu ve commit’lendiğini anlıyoruz. Aynı listede LAG göreceğiz bu da partition’a yazılan mesajların sayısının okunma sayısına olan farkını gösterir. Örneğin yazarken saniyede 1000 mesaj yazıp okurken 998 mesaj okuyorsak, her saniye okunmayan mesaj sayısı 2 artar. Burada LAG saniyede 2 artar. LAG süresi önemli çünkü realtime okuma için bir fark oluşturmasında bir engeldir. Geriden gelme olasılığı vardır.
