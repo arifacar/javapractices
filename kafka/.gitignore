@@ -5,3 +5,5 @@ target/
 .idea
 gradle
 .gradle
+build
+HELP.md
