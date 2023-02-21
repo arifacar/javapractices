@@ -1,8 +1,8 @@
-package com.arifacar.datastructure.queue;
+package com.arifacar.datastructure.collection.queue;
 
 import java.util.LinkedList;
 import java.util.Queue;
-public class JavaUtilQueueTest {
+public class JavaUtilQueue {
 
     public static void main(String[] args) {
         Queue<Integer> queue = new LinkedList<>();
