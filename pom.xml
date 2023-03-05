@@ -35,5 +35,6 @@
 
     <modules>
         <module>resilience4j</module>
+        <module>common</module>
     </modules>
 </project>
